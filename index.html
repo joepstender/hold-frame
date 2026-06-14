@@ -280,11 +280,14 @@
 
   // in-memory source of truth. We store FACTS and derive the rest.
   // days: { "YYYY-MM-DD": { h: holds, s: breakSeconds } }
-  var state = { goal: 8, days: {} };
+  var state = { goal: 8, days: {}, regionsAll: true, regions: {} };
   function loadState(){
     var s = Store.get();
-    if(s && typeof s === "object" && s.days){ state = { goal: (s.goal || 8), days: (s.days || {}) }; }
-    else { state = { goal: 8, days: {} }; }
+    if(s && typeof s === "object" && s.days){
+      state = { goal: (s.goal || 8), days: (s.days || {}),
+                regionsAll: (s.regionsAll !== false), regions: (s.regions || {}) };
+    }
+    else { state = { goal: 8, days: {}, regionsAll: true, regions: {} }; }
   }
   function saveState(){ Store.set(state); }
 
@@ -575,6 +578,7 @@
     if(r==="all"){ regionsAll=true; selectedRegions={}; }
     else{ regionsAll=false; selectedRegions[r]=!selectedRegions[r]; if(selectedCount()===0) regionsAll=true; }
     updateRegionChips();
+    state.regionsAll=regionsAll; state.regions=selectedRegions; saveState();
   });
   workChips.addEventListener("click", function(e){
     var b=e.target.closest(".chip"); if(!b) return;
@@ -597,6 +601,8 @@
 
   // ---------- init ----------
   loadState();
+  regionsAll = state.regionsAll; selectedRegions = state.regions || {};
+  if(!regionsAll && selectedCount()===0) regionsAll = true;  // safety: empty selection → all
   updateRegionChips();
   renderStats();
   paintTime(workMs); paintTitle(workMs);
