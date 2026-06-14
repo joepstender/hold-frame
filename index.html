@@ -140,6 +140,9 @@
   .hint kbd{font-family:var(--mono);background:#1a1e3c;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:11px;color:var(--paper)}
   .preview-link{background:none;border:none;color:var(--mute);font-family:var(--sans);font-size:11.5px;text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:0}
   .preview-link:hover{color:var(--paper)}
+  .hint.install{margin-top:14px;padding-top:14px;border-top:1px solid var(--line-soft);line-height:1.9}
+  .hint.install b{color:var(--paper);font-weight:600}
+  .hint.install em{color:var(--paper);font-style:normal;font-weight:500}
 
   @media (max-width:520px){ .card{padding:24px 20px 22px} .time{font-size:64px} .break-time{font-size:44px} h1{font-size:26px} }
 </style>
@@ -247,6 +250,13 @@
     <div class="hint">
       <kbd>Space</kbd> pause / resume &nbsp;·&nbsp; keep this open in a pinned tab — the countdown shows in the tab title<br>
       <button class="preview-link" id="previewBtn">preview a hold</button>
+    </div>
+
+    <div class="hint install" id="installHint">
+      <b>Install it as an app</b> — runs full-screen and works offline.<br>
+      <b>Desktop (Chrome / Edge):</b> click the install icon <kbd>⊕</kbd> in the address bar, or menu → <em>Install Hold Frame</em>.<br>
+      <b>iPhone / iPad (Safari):</b> Share <kbd>↑</kbd> → <em>Add to Home Screen</em>.<br>
+      <b>Android (Chrome):</b> menu <kbd>⋮</kbd> → <em>Add to Home screen</em>.
     </div>
   </div>
 
@@ -600,6 +610,19 @@
       navigator.serviceWorker.register("./service-worker.js").catch(function(){});
     });
   }
+
+  // Hide the install instructions once the app is already running as an installed
+  // PWA — standalone display mode (most browsers) or navigator.standalone (iOS Safari).
+  (function(){
+    try {
+      var installed = (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches)
+                      || window.navigator.standalone === true;
+      if (installed) {
+        var el = document.getElementById("installHint");
+        if (el) el.style.display = "none";
+      }
+    } catch (e) {}
+  })();
 </script>
 </body>
 </html>
