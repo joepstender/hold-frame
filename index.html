@@ -617,6 +617,14 @@
     });
   }
 
+  // Ask the browser to keep our localStorage from being evicted under storage
+  // pressure or inactivity (Safari clears non-persistent storage after ~7 days).
+  // The browser grants this on its own heuristics (installed PWA, engagement);
+  // calling it is harmless and silently no-ops where unsupported.
+  if (navigator.storage && navigator.storage.persist) {
+    navigator.storage.persist().catch(function(){});
+  }
+
   // Hide the install instructions once the app is already running as an installed
   // PWA — standalone display mode (most browsers) or navigator.standalone (iOS Safari).
   (function(){
