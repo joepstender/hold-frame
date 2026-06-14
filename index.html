@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hold Frame</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#14162B">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Hold Frame">
+<link rel="apple-touch-icon" href="./icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#14162B; --ink-2:#0C0E1C; --panel:#1C2040;
+    --line:#2C3260; --line-soft:#242a52; --mute:#888FB8; --paper:#E9EAF6;
+    --future:#57E1C4; --past:#FF8A66; --glow:#FFE3A0;
+    --shadow:0 24px 60px -24px rgba(0,0,0,.7);
+    --mono:'DM Mono',ui-monospace,'Cascadia Mono','SF Mono',Menlo,Consolas,monospace;
+    --sans:'Space Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{font-family:var(--sans);color:var(--paper);
+    background:radial-gradient(120% 90% at 50% -10%, #1b1f3e 0%, var(--ink) 42%, var(--ink-2) 100%);
+    min-height:100%;display:flex;align-items:center;justify-content:center;padding:24px;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  body::before{content:"";position:fixed;inset:0;
+    background-image:repeating-linear-gradient(90deg, rgba(255,255,255,.025) 0 1px, transparent 1px 64px);
+    -webkit-mask-image:linear-gradient(180deg,transparent,#000 30%,#000 70%,transparent);
+            mask-image:linear-gradient(180deg,transparent,#000 30%,#000 70%,transparent);pointer-events:none;z-index:0}
+  .stage{position:relative;z-index:1;width:100%;max-width:560px}
+  .card{position:relative;background:linear-gradient(180deg, rgba(34,39,72,.9), rgba(24,28,56,.92));
+    border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);padding:30px 30px 26px;overflow:hidden}
+  .card::after{content:"";position:absolute;left:0;right:0;top:0;height:10px;
+    background-image:radial-gradient(circle at center, rgba(255,255,255,.10) 0 2.2px, transparent 2.4px);
+    background-size:22px 10px;background-position:center top;opacity:.5}
+
+  .eyebrow{display:flex;align-items:center;gap:9px;font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--mute);font-weight:600}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--future);box-shadow:0 0 0 4px rgba(87,225,196,.14);flex:none}
+  .dot.rec{background:var(--past);box-shadow:0 0 0 4px rgba(255,138,102,.16)}
+  .brand-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-top:14px}
+  h1{font-size:30px;font-weight:700;letter-spacing:-.02em;line-height:1}
+  .tag{font-size:12.5px;color:var(--mute);margin-top:6px}
+  .sheet{font-family:var(--mono);font-size:11px;color:var(--mute);text-align:right;line-height:1.6;white-space:nowrap;flex:none}
+  .sheet b{color:var(--paper);font-weight:500;font-size:14px}
+  .sheet-k{font-size:10px;letter-spacing:.1em;text-transform:uppercase}
+
+  .readout{margin:26px 0 6px;text-align:center}
+  .time{font-family:var(--mono);font-weight:500;font-size:84px;line-height:.92;letter-spacing:.02em;font-variant-numeric:tabular-nums;color:var(--paper)}
+  .time .sep{color:var(--mute);margin:0 .02em}
+  .readout-label{font-size:12.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);margin-top:10px;font-weight:600}
+
+  .timeline{position:relative;margin:22px 2px 4px;height:54px}
+  .track{position:absolute;left:0;right:0;top:20px;height:14px;border-radius:8px;background:#191d3a;border:1px solid var(--line-soft);overflow:hidden}
+  .ticks{position:absolute;inset:0;background-image:repeating-linear-gradient(90deg, rgba(255,255,255,.07) 0 1px, transparent 1px 7.5%);opacity:.7}
+  .trail{position:absolute;left:0;top:0;bottom:0;width:0%;background:linear-gradient(90deg, rgba(255,138,102,.35), var(--past))}
+  .ahead-glow{position:absolute;top:0;bottom:0;right:0;width:100%;background:linear-gradient(90deg, transparent, rgba(87,225,196,.10))}
+  .head{position:absolute;top:8px;left:0%;width:2px;height:38px;background:var(--glow);border-radius:2px;box-shadow:0 0 14px 1px rgba(255,227,160,.55);transform:translateX(-1px)}
+  .head::before{content:"";position:absolute;top:-9px;left:50%;transform:translateX(-50%);border-left:7px solid transparent;border-right:7px solid transparent;border-top:9px solid var(--glow);filter:drop-shadow(0 0 6px rgba(255,227,160,.5))}
+  .hold-marker{position:absolute;right:-1px;top:4px;display:flex;flex-direction:column;align-items:center;gap:3px}
+  .hold-marker .flag{font-size:9.5px;font-family:var(--mono);color:var(--future);letter-spacing:.08em}
+  .hold-marker .pin{width:2px;height:30px;background:var(--future);opacity:.55;border-radius:2px}
+  .head,.trail{transition:left .22s linear, width .22s linear}
+  @media (prefers-reduced-motion: reduce){ .head,.trail{transition:none} }
+
+  .controls{display:flex;gap:10px;margin-top:22px}
+  button{font-family:var(--sans);cursor:pointer;border:none;border-radius:13px;font-weight:600;font-size:14.5px;transition:transform .12s ease, background .15s, border-color .15s, color .15s}
+  button:active{transform:translateY(1px)}
+  button:focus-visible{outline:2px solid var(--glow);outline-offset:3px}
+  .btn-primary{flex:1;padding:15px;background:var(--future);color:#06231d;box-shadow:0 10px 24px -10px rgba(87,225,196,.6)}
+  .btn-primary:hover{background:#6cebd0}
+  .btn-ghost{padding:15px 18px;background:transparent;color:var(--paper);border:1px solid var(--line)}
+  .btn-ghost:hover{border-color:var(--mute);background:rgba(255,255,255,.03)}
+  .btn-ghost.icon{padding:15px 16px;min-width:52px}
+
+  .settings{margin-top:20px;padding-top:18px;border-top:1px solid var(--line-soft);display:flex;flex-direction:column;gap:16px}
+  .set-block{display:flex;flex-direction:column;gap:10px}
+  .set-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .set-label{font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--mute);font-weight:600}
+  .chips{display:flex;gap:7px;flex-wrap:wrap}
+  .chip{padding:7px 12px;border-radius:9px;background:#1a1e3c;border:1px solid var(--line-soft);color:var(--mute);font-size:13px;font-family:var(--mono)}
+  .chip:hover{color:var(--paper)}
+  .chip.on{background:rgba(87,225,196,.13);border-color:rgba(87,225,196,.5);color:var(--future)}
+  .chips.multi .chip.on{background:rgba(255,138,102,.14);border-color:rgba(255,138,102,.5);color:var(--past)}
+  .caption{font-size:11.5px;line-height:1.5;color:var(--mute)}
+  .caption b{color:var(--paper);font-weight:500}
+
+  /* ---- stats (persisted) ---- */
+  .stats{margin-top:18px;padding-top:16px;border-top:1px solid var(--line-soft);display:flex;flex-direction:column;gap:15px}
+  .stat-row{display:flex;flex-direction:column;gap:9px}
+  .stat-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .goal-ctrl{display:flex;align-items:center;gap:10px}
+  .goal-ctrl.met .goal-val{color:var(--future)}
+  .goal-val{font-family:var(--mono);font-size:13px;color:var(--mute)}
+  .goal-val b{color:var(--paper);font-weight:500}
+  .met-check{display:none;color:var(--future);margin-left:6px}
+  .step{width:28px;height:28px;padding:0;border-radius:8px;background:#1a1e3c;border:1px solid var(--line-soft);color:var(--paper);font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center}
+  .step:hover{border-color:var(--mute)}
+  .day-cells{display:flex;gap:5px;flex-wrap:wrap}
+  .pcell{width:15px;height:18px;border-radius:3px;background:#1a1e3c;border:1px solid var(--line-soft);transition:background .3s,border-color .3s}
+  .pcell.filled{background:linear-gradient(180deg,#ffb38f,var(--past));border-color:transparent}
+  .pcell.filled.met{background:linear-gradient(180deg,#8defd6,var(--future))}
+  .week-strip{display:flex;gap:6px;flex-wrap:wrap}
+  .wcell{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;border:1px solid var(--line-soft);color:var(--mute);background:#1a1e3c}
+  .wcell.partial{background:rgba(87,225,196,.16);color:var(--future);border-color:transparent}
+  .wcell.hit{background:var(--future);color:#06231d;border-color:transparent;font-weight:600}
+  .wcell.today{box-shadow:0 0 0 2px var(--glow)}
+  .cumul-line{font-family:var(--mono);font-size:11.5px;color:var(--mute)}
+  .cumul-line b{color:var(--paper);font-weight:500}
+
+  .break{position:absolute;inset:0;z-index:5;background:linear-gradient(180deg, rgba(28,33,62,.97), rgba(18,22,46,.99));
+    display:none;flex-direction:column;justify-content:center;padding:30px 30px;text-align:center;overflow-y:auto}
+  .break.show{display:flex}
+  .break-eyebrow{display:flex;align-items:center;justify-content:center;gap:9px;font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--past);font-weight:700}
+  .star{display:inline-block;color:var(--glow);font-size:15px}
+  @media (prefers-reduced-motion: no-preference){ .break.show .star{animation:tw 2.4s ease-in-out infinite} }
+  @keyframes tw{0%,100%{opacity:.55;transform:scale(.9)}50%{opacity:1;transform:scale(1.12)}}
+  .stretch-name{font-size:26px;font-weight:700;letter-spacing:-.01em;margin-top:18px;line-height:1.08}
+  .stretch-body{font-size:15px;color:var(--paper);opacity:.86;line-height:1.5;margin-top:12px;max-width:40ch;margin-left:auto;margin-right:auto}
+  .ex-meta{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:16px;flex-wrap:wrap}
+  .ex-badge{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;padding:4px 10px;border-radius:999px;border:1px solid var(--line)}
+  .ex-badge.strength{background:rgba(255,227,160,.15);color:var(--glow);border-color:rgba(255,227,160,.4)}
+  .ex-badge.mobility{background:rgba(87,225,196,.12);color:var(--future);border-color:rgba(87,225,196,.4)}
+  .ex-badge.rest{background:#1a1e3c;color:var(--mute);border-color:var(--line-soft)}
+  .ex-target{font-family:var(--mono);font-size:12px;color:var(--mute);letter-spacing:.03em}
+  .break-time{font-family:var(--mono);font-weight:500;font-size:54px;letter-spacing:.03em;font-variant-numeric:tabular-nums;margin-top:18px;line-height:1}
+  .break-cells{display:flex;gap:5px;justify-content:center;margin-top:14px;flex-wrap:wrap}
+  .bc{width:12px;height:12px;border-radius:3px;background:#262c52;transition:background .25s}
+  .bc.on{background:var(--future)}
+  .break-today{font-family:var(--mono);font-size:12px;color:var(--mute);margin-top:18px;letter-spacing:.04em}
+  .break-controls{display:flex;gap:10px;margin-top:14px}
+  .break-controls .btn-primary{background:var(--future);color:#06231d}
+  .quote{margin-top:18px;font-size:13px;color:var(--mute);font-style:italic;line-height:1.5;max-width:40ch;margin-left:auto;margin-right:auto}
+
+  .hint{margin-top:16px;text-align:center;font-size:11.5px;color:var(--mute);line-height:1.7}
+  .hint kbd{font-family:var(--mono);background:#1a1e3c;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:11px;color:var(--paper)}
+  .preview-link{background:none;border:none;color:var(--mute);font-family:var(--sans);font-size:11.5px;text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:0}
+  .preview-link:hover{color:var(--paper)}
+
+  @media (max-width:520px){ .card{padding:24px 20px 22px} .time{font-size:64px} .break-time{font-size:44px} h1{font-size:26px} }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <div class="card">
+
+      <div class="eyebrow"><span class="dot" id="statusDot"></span><span id="statusText">ready when you are</span></div>
+      <div class="brand-row">
+        <div><h1>Hold&nbsp;Frame</h1><div class="tag">Rest is a held frame.</div></div>
+        <div class="sheet"><span class="sheet-k">given back</span><br><b id="cumulTime">0s</b></div>
+      </div>
+
+      <div class="readout">
+        <div class="time" id="timeDisplay">25<span class="sep">:</span>00</div>
+        <div class="readout-label" id="readoutLabel">until your next hold</div>
+      </div>
+
+      <div class="timeline">
+        <div class="track"><div class="ahead-glow"></div><div class="ticks"></div><div class="trail" id="trail"></div></div>
+        <div class="head" id="head"></div>
+        <div class="hold-marker"><span class="flag">HOLD</span><span class="pin"></span></div>
+      </div>
+
+      <div class="controls">
+        <button class="btn-primary" id="primaryBtn">Start the shot</button>
+        <button class="btn-ghost" id="resetBtn" title="Reset to the start">Reset</button>
+        <button class="btn-ghost icon" id="soundBtn" title="Mute / unmute the chime" aria-label="Sound on">🔔</button>
+      </div>
+
+      <div class="settings">
+        <div class="set-block">
+          <span class="set-label">Where's it bugging you right now?</span>
+          <div class="chips multi" id="regionChips">
+            <button class="chip" data-region="all">Everywhere / not sure</button>
+            <button class="chip" data-region="neck">Neck</button>
+            <button class="chip" data-region="shoulders">Shoulders</button>
+            <button class="chip" data-region="forearm">Forearm / elbow</button>
+            <button class="chip" data-region="wrist">Wrist / hand</button>
+            <button class="chip" data-region="thumb">Thumb</button>
+            <button class="chip" data-region="lowerback">Lower back</button>
+            <button class="chip" data-region="eyes">Eyes</button>
+          </div>
+        </div>
+        <div class="set-row">
+          <span class="set-label">Draw for</span>
+          <div class="chips" id="workChips">
+            <button class="chip" data-min="15">15 min</button>
+            <button class="chip" data-min="20">20 min</button>
+            <button class="chip on" data-min="25">25 min</button>
+            <button class="chip" data-min="30">30 min</button>
+          </div>
+        </div>
+        <div class="set-row">
+          <span class="set-label">Hold for</span>
+          <div class="chips" id="breakChips">
+            <button class="chip on" data-sec="30">30 sec</button>
+            <button class="chip" data-sec="60">60 sec</button>
+            <button class="chip" data-sec="90">90 sec</button>
+          </div>
+        </div>
+        <div class="caption">Intervals stay inside the microbreak window — roughly <b>30–90&nbsp;sec breaks every 15–30&nbsp;min</b> — that research links to less discomfort. Worth remembering: moving and changing posture is what the evidence backs, more than any exact number.</div>
+      </div>
+
+      <div class="stats">
+        <div class="stat-row">
+          <div class="stat-head">
+            <span class="set-label">Today</span>
+            <span class="goal-ctrl" id="goalCtrl">
+              <button class="step" id="goalDown" aria-label="Lower daily goal">−</button>
+              <span class="goal-val"><b id="todayCount">0</b> / <span id="goalVal">8</span><span class="met-check" id="goalMet">✓</span></span>
+              <button class="step" id="goalUp" aria-label="Raise daily goal">+</button>
+            </span>
+          </div>
+          <div class="day-cells" id="todayCells"></div>
+        </div>
+        <div class="stat-row">
+          <span class="set-label">This week</span>
+          <div class="week-strip" id="weekStrip"></div>
+        </div>
+        <div class="cumul-line"><b id="totalHolds">0</b> holds total · <b id="activeDays">0</b> active days</div>
+      </div>
+
+      <div class="break" id="breakScreen">
+        <div class="break-eyebrow"><span class="star">✷</span><span>Hold this frame</span></div>
+        <div class="stretch-name" id="stretchName">Scapular squeeze</div>
+        <div class="stretch-body" id="stretchBody">Drop your shoulders down and back, then squeeze the blades together.</div>
+        <div class="ex-meta">
+          <span class="ex-badge strength" id="exBadge" title="Resistance / loaded work — the best-evidenced category">Strength</span>
+          <span class="ex-target" id="stretchTarget">target — upper back</span>
+        </div>
+        <div class="break-time" id="breakTime">0:30</div>
+        <div class="break-cells" id="breakCells"></div>
+        <div class="break-today" id="breakToday">today · 0 / 8</div>
+        <div class="break-controls">
+          <button class="btn-primary" id="doneBtn">Done — back to it</button>
+          <button class="btn-ghost" id="skipBtn">Skip</button>
+        </div>
+        <div class="quote" id="quote">An in-between keeps the motion smooth. So does this.</div>
+      </div>
+
+    </div>
+
+    <div class="hint">
+      <kbd>Space</kbd> pause / resume &nbsp;·&nbsp; keep this open in a pinned tab — the countdown shows in the tab title<br>
+      <button class="preview-link" id="previewBtn">preview a hold</button>
+    </div>
+  </div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ============================================================
+     STORAGE SEAM — swap localStorage → IndexedDB by reimplementing
+     get/set only. The app never reads storage mid-session; it reads
+     the in-memory `state` (hydrated once on load, written through
+     saveState), so going async later is contained to this object.
+     ============================================================ */
+  var Store = (function(){
+    var KEY = "holdframe.v1", mem = null;
+    return {
+      get: function(){ try{ var v = localStorage.getItem(KEY); return v ? JSON.parse(v) : mem; }catch(e){ return mem; } },
+      set: function(v){ mem = v; try{ localStorage.setItem(KEY, JSON.stringify(v)); }catch(e){} }
+    };
+  })();
+
+  // in-memory source of truth. We store FACTS and derive the rest.
+  // days: { "YYYY-MM-DD": { h: holds, s: breakSeconds } }
+  var state = { goal: 8, days: {} };
+  function loadState(){
+    var s = Store.get();
+    if(s && typeof s === "object" && s.days){ state = { goal: (s.goal || 8), days: (s.days || {}) }; }
+    else { state = { goal: 8, days: {} }; }
+  }
+  function saveState(){ Store.set(state); }
+
+  function todayKey(d){ d = d || new Date();
+    var m = d.getMonth()+1, day = d.getDate();
+    return d.getFullYear()+"-"+(m<10?"0":"")+m+"-"+(day<10?"0":"")+day; } // LOCAL date, not UTC
+  function fmtDur(sec){ sec = Math.round(sec||0);
+    if(sec < 60) return sec+"s";
+    var m = Math.floor(sec/60), h = Math.floor(m/60); m = m%60;
+    return h>0 ? (h+"h "+m+"m") : (m+"m"); }
+  function recordHold(elapsedSec){
+    var k = todayKey();
+    if(!state.days[k]) state.days[k] = { h:0, s:0 };
+    state.days[k].h += 1; state.days[k].s += elapsedSec;
+    saveState(); renderStats();
+  }
+
+  // ---------- exercise library (region + type tagged) ----------
+  var EXERCISES = [
+    {regions:["neck"], type:"strength", name:"Isometric neck press", target:"neck",
+     body:"Place a palm flat on your forehead and gently press your head into it with no movement. Hold 5 seconds, relax. Repeat toward each side and the back of the head."},
+    {regions:["neck"], type:"strength", name:"Chin tuck", target:"neck + posture",
+     body:"Draw your chin straight back to make a gentle double chin — don't tip your head. Hold 5 seconds, release. Repeat 5 times."},
+    {regions:["neck"], type:"mobility", name:"Neck side stretch", target:"neck",
+     body:"Tip one ear toward that shoulder, resting your hand on your head with no pulling. Hold, then switch sides."},
+    {regions:["neck"], type:"mobility", name:"Levator stretch", target:"neck + upper shoulder",
+     body:"Turn your head to look down toward your armpit and let the weight of your hand add a soft stretch. Hold, then switch."},
+    {regions:["shoulders"], type:"strength", name:"Scapular squeeze", target:"upper back",
+     body:"Drop your shoulders down and back, then squeeze the blades together hard — as if pinching a pencil between them. Hold 5 seconds, release. Repeat 8 times."},
+    {regions:["shoulders"], type:"strength", name:"Wall angels", target:"shoulders + upper back",
+     body:"Back against a wall, arms up in a goalpost. Slowly slide them overhead and back down, keeping wrists and elbows on the wall."},
+    {regions:["shoulders"], type:"strength", name:"Desk push-ups", target:"shoulders + chest",
+     body:"Hands on the edge of the desk, walk your feet back, and do slow push-ups against it. As many as feel good in the time."},
+    {regions:["shoulders"], type:"mobility", name:"Chest opener", target:"chest + shoulders",
+     body:"Clasp your hands behind your back, lift the chest and roll the shoulders open. Or press a forearm into a doorframe and turn away."},
+    {regions:["shoulders"], type:"mobility", name:"Shoulder rolls", target:"shoulders",
+     body:"Make big, slow circles with both shoulders — up, back and down. Ten one way, ten the other."},
+    {regions:["forearm"], type:"strength", name:"Resisted wrist raise", target:"forearm / elbow",
+     body:"Rest your forearm on the desk, hand off the edge, palm down. Raise and lower the hand slowly while your other hand presses down for light resistance. 8–10 reps each direction."},
+    {regions:["forearm","wrist"], type:"mobility", name:"Wrist flexor stretch", target:"forearm + wrist",
+     body:"Arm straight out, palm up. With your other hand, gently draw the fingers back toward you. Hold."},
+    {regions:["forearm","wrist"], type:"mobility", name:"Wrist extensor stretch", target:"outer forearm",
+     body:"Arm out, palm down. Gently press the back of the hand down and toward you. Hold."},
+    {regions:["forearm"], type:"mobility", name:"Pronation and supination", target:"forearm",
+     body:"Tuck your elbow at your side, forearm forward. Slowly rotate the palm fully up, then fully down. Repeat ten times."},
+    {regions:["wrist"], type:"strength", name:"Grip squeeze", target:"wrist + hand",
+     body:"Squeeze a soft ball — or just make a firm fist — and hold 5 seconds, then spread the fingers wide. Repeat 8–10 times."},
+    {regions:["wrist"], type:"mobility", name:"Tendon glides", target:"hand + fingers",
+     body:"Move the hand slowly through four shapes: straight fingers, hook, full fist, then tabletop. A few rounds, smooth and unhurried."},
+    {regions:["wrist"], type:"mobility", name:"Wrist circles", target:"wrists",
+     body:"Make slow, full circles with both wrists — ten one way, ten the other. Loose, not forced."},
+    {regions:["wrist"], type:"mobility", name:"Prayer stretch", target:"wrists",
+     body:"Palms together at chest height. Keeping them pressed, lower your hands until you feel the stretch through the wrists."},
+    {regions:["thumb"], type:"strength", name:"Thumb press", target:"thumb",
+     body:"Press the pad of your thumb firmly against the desk or your index finger for 5 seconds, then ease off. Repeat 6–8 times — this loads the muscle that grips the stylus."},
+    {regions:["thumb"], type:"mobility", name:"Thumb release", target:"thumb",
+     body:"Gently draw the thumb back and away from the palm, hold, then trace five slow circles each way. Your hardest-working stylus muscle."},
+    {regions:["thumb","wrist"], type:"mobility", name:"Finger fan", target:"hand + thumb",
+     body:"Spread all fingers and thumb as wide as they'll go, hold, then close into a slow soft fist. Repeat a few times."},
+    {regions:["lowerback"], type:"strength", name:"Sit-to-stands", target:"lower back + legs",
+     body:"Stand up from your chair without using your hands, then sit back down with control. Repeat 8–10 times — movement and leg work in one."},
+    {regions:["lowerback"], type:"mobility", name:"Standing back extension", target:"lower back",
+     body:"Stand, hands supporting your lower back, and gently arch backward looking up slightly. A few slow reps."},
+    {regions:["lowerback"], type:"mobility", name:"Seated spinal twist", target:"spine",
+     body:"Sit tall, hand on the opposite knee, and rotate gently to look behind you. Hold, then twist the other way."},
+    {regions:["lowerback"], type:"mobility", name:"Hip flexor stretch", target:"hips + lower back",
+     body:"Stand and step one foot well back. Tuck your pelvis under until you feel the front of the back hip open. Hold, then switch."},
+    {regions:["eyes"], type:"rest", name:"Look far, blink", target:"eyes",
+     body:"Find something at least 6 metres away and rest your eyes on it. Blink slowly and fully several times to re-wet them."},
+    {regions:["eyes"], type:"rest", name:"Palming", target:"eyes",
+     body:"Cup your palms over closed eyes with no pressure, blocking the light. Breathe slowly for a few breaths and let your eyes soften."},
+    {regions:["general"], type:"mobility", name:"Stand and reach", target:"whole body",
+     body:"Stand up. Reach both arms overhead and lengthen all the way up through the spine. Breathe into it."},
+    {regions:["general"], type:"rest", name:"Get up, get water", target:"whole body",
+     body:"Stand, walk to the kitchen, fill a glass and drink some. Your hands rest and your eyes get some distance."},
+    {regions:["general"], type:"strength", name:"Walk a lap", target:"whole body",
+     body:"Get out of the chair and walk a slow lap of the room or hallway. Shake the hands out as you go."}
+  ];
+  var QUOTES = [
+    "An in-between keeps the motion smooth. So does this.",
+    "Squash and stretch — and this one's the stretch.",
+    "Twelve principles of animation. Here's a thirteenth: rest the drawing hand.",
+    "Your wrist has to last longer than one production.",
+    "Hold the frame now so you don't have to hold ice later.",
+    "Future-you is still animating. Be kind to their hands.",
+    "Pixels are patient. Tendons are not.",
+    "The best easing is a body that isn't in pain.",
+    "Tablet down, shoulders back. The shot will wait.",
+    "Strong beats stretchy — load the muscle, then move it."
+  ];
+  var TYPE_LABEL = {strength:"Strength", mobility:"Mobility", rest:"Rest"};
+
+  // ---------- timer state ----------
+  var mode="idle", workMs=25*60*1000, breakMs=30*1000, remaining=workMs, endAt=0, running=false;
+  var soundOn=true, lastExercise=null, ticker=null, baseTitle="Hold Frame";
+  var regionsAll=true, selectedRegions={};
+
+  var $=function(id){return document.getElementById(id);};
+  var timeDisplay=$("timeDisplay"), readoutLabel=$("readoutLabel"), trail=$("trail"), head=$("head"),
+      statusDot=$("statusDot"), statusText=$("statusText"),
+      primaryBtn=$("primaryBtn"), resetBtn=$("resetBtn"), soundBtn=$("soundBtn"),
+      breakScreen=$("breakScreen"), stretchName=$("stretchName"), stretchBody=$("stretchBody"),
+      exBadge=$("exBadge"), stretchTarget=$("stretchTarget"),
+      breakTime=$("breakTime"), breakCells=$("breakCells"), breakToday=$("breakToday"),
+      doneBtn=$("doneBtn"), skipBtn=$("skipBtn"), quote=$("quote"),
+      previewBtn=$("previewBtn"), workChips=$("workChips"), breakChips=$("breakChips"), regionChips=$("regionChips"),
+      cumulTime=$("cumulTime"), todayCount=$("todayCount"), goalVal=$("goalVal"), goalMet=$("goalMet"),
+      goalCtrl=$("goalCtrl"), todayCells=$("todayCells"), weekStrip=$("weekStrip"),
+      totalHolds=$("totalHolds"), activeDays=$("activeDays"), goalUp=$("goalUp"), goalDown=$("goalDown");
+
+  // ---------- sound (Web Audio → offline) ----------
+  var audioCtx=null;
+  function initAudio(){ if(audioCtx) return; try{ audioCtx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ audioCtx=null; } }
+  function chime(rising){
+    if(!soundOn||!audioCtx) return;
+    try{
+      var now=audioCtx.currentTime, notes=rising?[523.25,659.25,783.99]:[783.99,659.25,523.25];
+      notes.forEach(function(f,i){
+        var o=audioCtx.createOscillator(), g=audioCtx.createGain();
+        o.type="sine"; o.frequency.value=f; var t=now+i*0.13;
+        g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(0.16,t+0.02);
+        g.gain.exponentialRampToValueAtTime(0.0008,t+0.34);
+        o.connect(g); g.connect(audioCtx.destination); o.start(t); o.stop(t+0.36);
+      });
+    }catch(e){}
+  }
+  function notify(title,body){ try{ if(!("Notification" in window))return; if(Notification.permission==="granted") new Notification(title,{body:body,silent:true}); }catch(e){} }
+  function askNotify(){ try{ if(("Notification" in window)&&Notification.permission==="default") Notification.requestPermission(); }catch(e){} }
+
+  // ---------- formatting / paint ----------
+  function fmt(ms){ var s=Math.max(0,Math.round(ms/1000)); var m=Math.floor(s/60); s=s%60; return {m:m,s:s,str:m+":"+(s<10?"0":"")+s}; }
+  function paintTime(ms){ var f=fmt(ms); timeDisplay.innerHTML=(f.m<10?"0":"")+f.m+'<span class="sep">:</span>'+(f.s<10?"0":"")+f.s; }
+  function paintTitle(ms){
+    if(mode==="break"){ document.title="● HOLD — stretch! · "+fmt(ms).str; }
+    else if(mode==="working"){ document.title=fmt(ms).str+" · "+baseTitle; }
+    else { document.title=baseTitle; }
+  }
+  function paintTimeline(){
+    var frac=(mode==="working")?1-(remaining/workMs):0; frac=Math.max(0,Math.min(1,frac));
+    var pct=(frac*100).toFixed(2)+"%"; trail.style.width=pct; head.style.left=pct;
+  }
+
+  // ---------- stats render (all DERIVED from state.days) ----------
+  function renderStats(){
+    var goal=state.goal, tk=todayKey();
+    var th=(state.days[tk]&&state.days[tk].h)||0;
+    var met=th>=goal;
+
+    goalVal.textContent=goal; todayCount.textContent=th;
+    goalCtrl.classList.toggle("met",met);
+    goalMet.style.display=met?"inline":"none";
+
+    todayCells.innerHTML="";
+    for(var i=0;i<goal;i++){ var c=document.createElement("div");
+      c.className="pcell"+(i<th?" filled":"")+(met?" met":""); todayCells.appendChild(c); }
+
+    weekStrip.innerHTML="";
+    var letters=["S","M","T","W","T","F","S"], now=new Date();
+    for(var off=6;off>=0;off--){
+      var d=new Date(now.getFullYear(),now.getMonth(),now.getDate()-off), key=todayKey(d);
+      var h=(state.days[key]&&state.days[key].h)||0;
+      var cls=h>=goal?"hit":(h>0?"partial":"empty");
+      var cell=document.createElement("div");
+      cell.className="wcell "+cls+(off===0?" today":"");
+      cell.textContent=letters[d.getDay()];
+      cell.title=key+" — "+h+" hold"+(h===1?"":"s");
+      weekStrip.appendChild(cell);
+    }
+
+    var ts=0,totH=0,act=0;
+    for(var k in state.days){ if(Object.prototype.hasOwnProperty.call(state.days,k)){
+      ts+=state.days[k].s||0; totH+=state.days[k].h||0; if((state.days[k].h||0)>0) act++; } }
+    cumulTime.textContent=fmtDur(ts);
+    totalHolds.textContent=totH; activeDays.textContent=act;
+
+    breakToday.textContent="today · "+th+" / "+goal+(met?"  ✓":"");
+  }
+
+  // ---------- loop ----------
+  function startTicker(){ if(!ticker) ticker=setInterval(loop,200); }
+  function stopTicker(){ if(ticker){ clearInterval(ticker); ticker=null; } }
+  function loop(){
+    if(!running) return;
+    remaining=endAt-Date.now();
+    if(remaining<=0){ remaining=0;
+      if(mode==="working"){ enterBreak(); return; }
+      if(mode==="break"){ finishHold(true); return; } }
+    render();
+  }
+  function render(){
+    if(mode==="break"){ breakTime.textContent=fmt(remaining).str; paintBreakCells(); }
+    else { paintTime(remaining); paintTimeline(); }
+    paintTitle(remaining);
+  }
+
+  // ---------- phases ----------
+  function setStatus(text,rec){ statusText.textContent=text; statusDot.className="dot"+(rec?" rec":""); }
+  function enterWorking(resume){
+    mode="working"; breakScreen.classList.remove("show");
+    if(!resume) remaining=workMs;
+    running=true; endAt=Date.now()+remaining;
+    primaryBtn.textContent="Pause"; readoutLabel.textContent="until your next hold";
+    setStatus("rolling — drawing",false); startTicker(); render();
+  }
+  function pauseWorking(){
+    running=false; remaining=Math.max(0,endAt-Date.now());
+    primaryBtn.textContent="Resume"; setStatus("paused",false); stopTicker(); render();
+  }
+  function enterBreak(){
+    mode="break"; running=true; remaining=breakMs; endAt=Date.now()+breakMs;
+    setExercise(pickExercise()); quote.textContent=QUOTES[Math.floor(Math.random()*QUOTES.length)];
+    buildBreakCells(); renderStats(); breakScreen.classList.add("show");
+    setStatus("hold — stretch now",true); chime(true);
+    notify("Hold Frame — time to move", Math.round(breakMs/1000)+"s · "+stretchName.textContent);
+    startTicker(); render();
+  }
+  function finishHold(completed){
+    var elapsedSec=Math.max(0, Math.round((breakMs - Math.max(0,remaining))/1000));
+    recordHold(elapsedSec);
+    if(completed) chime(false);
+    breakScreen.classList.remove("show"); enterWorking(false);
+  }
+  function fullReset(){
+    running=false; stopTicker(); mode="idle"; remaining=workMs;
+    breakScreen.classList.remove("show");
+    primaryBtn.textContent="Start the shot"; readoutLabel.textContent="until your next hold";
+    setStatus("ready when you are",false);
+    paintTime(workMs); trail.style.width="0%"; head.style.left="0%"; paintTitle(workMs);
+  }
+
+  // ---------- exercise selection (region-aware, strength-weighted) ----------
+  function selectedCount(){ var n=0; for(var k in selectedRegions){ if(selectedRegions[k]) n++; } return n; }
+  function getPool(){
+    if(regionsAll||selectedCount()===0) return EXERCISES;
+    return EXERCISES.filter(function(e){
+      for(var i=0;i<e.regions.length;i++){ if(selectedRegions[e.regions[i]]) return true; } return false; });
+  }
+  function pickExercise(){
+    var pool=getPool(); if(!pool.length) pool=EXERCISES;
+    var bag=[]; pool.forEach(function(e){ var w=(e.type==="strength")?2:1; for(var i=0;i<w;i++) bag.push(e); });
+    var choice,guard=0;
+    do{ choice=bag[Math.floor(Math.random()*bag.length)]; guard++; } while(choice===lastExercise && pool.length>1 && guard<10);
+    lastExercise=choice; return choice;
+  }
+  function setExercise(e){
+    stretchName.textContent=e.name; stretchBody.textContent=e.body;
+    stretchTarget.textContent="target — "+e.target;
+    exBadge.textContent=TYPE_LABEL[e.type]; exBadge.className="ex-badge "+e.type;
+  }
+  function buildBreakCells(){
+    breakCells.innerHTML=""; var n=Math.min(Math.round(breakMs/1000),20);
+    for(var i=0;i<n;i++){ var d=document.createElement("div"); d.className="bc"; breakCells.appendChild(d); }
+  }
+  function paintBreakCells(){
+    var cells=breakCells.children, n=cells.length, lit=Math.round((1-(remaining/breakMs))*n);
+    for(var i=0;i<n;i++){ cells[i].className="bc"+(i<lit?" on":""); }
+  }
+
+  // ---------- controls ----------
+  primaryBtn.addEventListener("click", function(){
+    initAudio(); askNotify(); if(audioCtx&&audioCtx.state==="suspended") audioCtx.resume();
+    if(mode==="idle"){ enterWorking(false); }
+    else if(mode==="working" && running){ pauseWorking(); }
+    else if(mode==="working" && !running){ running=true; endAt=Date.now()+remaining; primaryBtn.textContent="Pause"; setStatus("rolling — drawing",false); startTicker(); render(); }
+  });
+  resetBtn.addEventListener("click", fullReset);
+  soundBtn.addEventListener("click", function(){
+    soundOn=!soundOn; soundBtn.textContent=soundOn?"🔔":"🔕"; soundBtn.setAttribute("aria-label",soundOn?"Sound on":"Sound off");
+    if(soundOn){ initAudio(); if(audioCtx&&audioCtx.state==="suspended") audioCtx.resume(); chime(true); }
+  });
+  doneBtn.addEventListener("click", function(){ finishHold(true); });
+  skipBtn.addEventListener("click", function(){ finishHold(false); });
+  previewBtn.addEventListener("click", function(){ initAudio(); if(audioCtx&&audioCtx.state==="suspended") audioCtx.resume(); enterBreak(); });
+
+  goalUp.addEventListener("click", function(){ state.goal=Math.min(16,state.goal+1); saveState(); renderStats(); });
+  goalDown.addEventListener("click", function(){ state.goal=Math.max(4,state.goal-1); saveState(); renderStats(); });
+
+  function updateRegionChips(){
+    [].forEach.call(regionChips.children, function(c){
+      var r=c.getAttribute("data-region");
+      var on=(r==="all")?regionsAll:(!regionsAll && !!selectedRegions[r]);
+      c.classList.toggle("on",on);
+    });
+  }
+  regionChips.addEventListener("click", function(e){
+    var b=e.target.closest(".chip"); if(!b) return;
+    var r=b.getAttribute("data-region");
+    if(r==="all"){ regionsAll=true; selectedRegions={}; }
+    else{ regionsAll=false; selectedRegions[r]=!selectedRegions[r]; if(selectedCount()===0) regionsAll=true; }
+    updateRegionChips();
+  });
+  workChips.addEventListener("click", function(e){
+    var b=e.target.closest(".chip"); if(!b) return;
+    [].forEach.call(workChips.children,function(c){c.classList.remove("on");}); b.classList.add("on");
+    workMs=parseInt(b.getAttribute("data-min"),10)*60*1000;
+    if(mode==="idle"){ remaining=workMs; paintTime(workMs); trail.style.width="0%"; head.style.left="0%"; paintTitle(workMs); }
+    else if(mode==="working" && !running){ remaining=Math.min(remaining,workMs); render(); }
+  });
+  breakChips.addEventListener("click", function(e){
+    var b=e.target.closest(".chip"); if(!b) return;
+    [].forEach.call(breakChips.children,function(c){c.classList.remove("on");}); b.classList.add("on");
+    breakMs=parseInt(b.getAttribute("data-sec"),10)*1000;
+  });
+  document.addEventListener("keydown", function(e){
+    if(e.code!=="Space") return;
+    var t=e.target.tagName; if(t==="BUTTON"||t==="INPUT"||t==="TEXTAREA") return;
+    e.preventDefault();
+    if(mode==="break"){ doneBtn.click(); } else { primaryBtn.click(); }
+  });
+
+  // ---------- init ----------
+  loadState();
+  updateRegionChips();
+  renderStats();
+  paintTime(workMs); paintTitle(workMs);
+})();
+</script>
+<script>
+  // Register the service worker only over http(s) (incl. localhost). On file://
+  // service workers are unavailable, so this silently no-ops and the app still runs.
+  if ("serviceWorker" in navigator && location.protocol.indexOf("http") === 0) {
+    window.addEventListener("load", function(){
+      navigator.serviceWorker.register("./service-worker.js").catch(function(){});
+    });
+  }
+</script>
+</body>
+</html>
