@@ -51,11 +51,58 @@ Edit → commit → push to `main`. Pages redeploys in ~1 minute. Saved progress
 because `localStorage` is keyed by the site **origin**, not the version — so updates never reset
 anyone's streak, as long as you keep the same URL and don't change the storage key (`holdframe.v1`).
 
-## Optional: custom domain
+## Custom domain + HTTPS
 
-Settings → Pages → **Custom domain** gives a clean, dedicated origin (and drops the `/repo/` path).
-One caveat: a new domain is a new origin, so existing visitors' saved data won't carry over — they'd
-start fresh. Pick the final URL before you have real users on it.
+The site is served from **`holdframe.art`** (with `www.holdframe.art` redirecting to it), over HTTPS.
+This is the live setup; the steps below document how it's wired and how to reproduce it.
+
+One caveat: a custom domain is a new origin, so saved progress from the old `*.github.io` URL won't
+carry over — visitors there start fresh. Pick the final URL before you have real users on it.
+
+### DNS (at your DNS host)
+
+The apex (`holdframe.art`) uses A/AAAA records pointing at GitHub Pages; `www` is a CNAME to the
+`github.io` host. GitHub then serves both names and redirects `www` → apex.
+
+```
+@     A      185.199.108.153
+@     A      185.199.109.153
+@     A      185.199.110.153
+@     A      185.199.111.153
+@     AAAA   2606:50c0:8000::153
+@     AAAA   2606:50c0:8001::153
+@     AAAA   2606:50c0:8002::153
+@     AAAA   2606:50c0:8003::153
+www   CNAME  joepstender.github.io.
+```
+
+Notes:
+- Set **all four** A and AAAA records (GitHub's CDN), not just one.
+- `www` must point to `joepstender.github.io.` — **not** any registrar "web forwarding" / redirect
+  host. If web forwarding is on for `www`, disable it or it may overwrite the CNAME.
+- DNS TTL is 3h, so changes can take that long to clear from caches even after the authoritative
+  servers (and public resolvers like `8.8.8.8`) show the new values.
+
+### GitHub side
+
+- Settings → Pages → **Custom domain:** `holdframe.art` (apex only — do *not* add `www` here; the
+  apex being primary plus the `www` CNAME makes GitHub redirect `www` → apex automatically). This is
+  stored in the repo's `CNAME` file at the root.
+- GitHub auto-provisions a single Let's Encrypt cert covering **both** `holdframe.art` and
+  `www.holdframe.art` once DNS is correct (can take minutes to a few hours).
+- Settings → Pages → **Enforce HTTPS:** on. Available only after the cert is issued.
+
+If the cert seems stuck after DNS is correct, remove the custom domain and re-add it (Settings →
+Pages, or via `gh api -X PUT repos/<owner>/<repo>/pages -f cname=...`) to force a fresh DNS check and
+cert request. This makes the `github-pages` bot rewrite the `CNAME` file, so `git pull` afterward.
+
+### Verify
+
+```bash
+curl -sI https://holdframe.art            # 200, valid cert
+curl -sI http://holdframe.art             # 301 -> https://holdframe.art/
+curl -sI https://www.holdframe.art        # 301 -> https://holdframe.art/
+```
 
 ## Notes
 
